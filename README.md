@@ -1,5 +1,8 @@
 # Bakaaya
 
+<img width="2720" height="1289" alt="bakaaya_logo" src="https://github.com/user-attachments/assets/69fda709-0bd2-4271-894c-e1b4630d7904" />
+
+
 **Know what's owed. Ask, don't search.**
 
 Bakaaya is a full-stack AI-powered supplier and customer ledger built for small Indian businesses. Instead of hunting through spreadsheets, you type *"How much do I owe Amul?"* and get an instant answer. Instead of filling forms, you type *"amul ka bill 15000"* and it's logged.
