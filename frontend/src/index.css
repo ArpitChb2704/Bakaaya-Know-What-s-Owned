@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background-color: #1F6E5C;
+    color: #F7F5F0;
+  }
+}
+
+@layer utilities {
+  .amount-due {
+    color: #E8542C;
+    font-feature-settings: 'tnum';
+  }
+  .amount-settled {
+    color: #1F6E5C;
+    font-feature-settings: 'tnum';
+  }
+  .num {
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  }
+}
