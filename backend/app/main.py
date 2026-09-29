@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
 from app.routers import auth, parties, transactions, dashboard, chat, reminders, smart_entry, bank_import, analytics
+from sqlalchemy import text
+from app.database import get_db
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 Base.metadata.create_all(bind=engine)
 
@@ -31,5 +35,6 @@ def root():
     return {"status": "ok", "service": "bakaaya-api", "version": "0.3.0"}
 
 @app.get("/health")
-def health():
+def health(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
     return {"status": "healthy"}
