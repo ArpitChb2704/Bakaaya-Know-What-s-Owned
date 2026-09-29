@@ -3,6 +3,11 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+from app.services.statement_pdf import generate_statement_pdf
+from decimal import Decimal
+from fastapi import Response
 
 from app.auth import get_current_user, get_business_owner_id
 from app.database import get_db
@@ -10,7 +15,6 @@ from app.models import User, Party, Transaction, PartyType
 from app.schemas import CashflowForecast, SupplierScore, StatementRequest, UPILinkRequest, UPILinkResponse
 from app.services.cashflow import forecast
 from app.services.supplier_score import score_supplier
-from app.services.statement_pdf import generate_html_statement
 from app.services.ledger import party_balance
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
@@ -40,7 +44,7 @@ def get_supplier_scores(db: Session = Depends(get_db), current_user: User = Depe
     return scores
 
 
-@router.post("/statement", response_class=HTMLResponse)
+@router.post("/statement")
 def get_statement(
     payload: StatementRequest,
     db: Session = Depends(get_db),
@@ -54,9 +58,25 @@ def get_statement(
     from app.models import User as UserModel
     owner = db.query(UserModel).filter(UserModel.id == owner_id).first()
 
+    from_date = payload.from_date
+    to_date = payload.to_date or date.today()
+
+    # Opening balance: net of all transactions strictly before from_date
+    opening_balance = Decimal("0")
+    if from_date:
+        prior = db.query(Transaction).filter(
+            Transaction.party_id == party.id,
+            Transaction.transaction_date < from_date,
+        ).all()
+        for t in prior:
+            if t.transaction_type.value in ("bill", "sale"):
+                opening_balance += t.amount
+            else:
+                opening_balance -= t.amount
+
     q = db.query(Transaction).filter(Transaction.party_id == party.id)
-    if payload.from_date:
-        q = q.filter(Transaction.transaction_date >= payload.from_date)
+    if from_date:
+        q = q.filter(Transaction.transaction_date >= from_date)
     if payload.to_date:
         q = q.filter(Transaction.transaction_date <= payload.to_date)
     txns = q.order_by(Transaction.transaction_date).all()
@@ -64,21 +84,25 @@ def get_statement(
     txn_dicts = [{"transaction_date": str(t.transaction_date), "transaction_type": t.transaction_type.value,
                   "amount": str(t.amount), "notes": t.notes} for t in txns]
 
-    from_date = payload.from_date or (txns[0].transaction_date if txns else date.today())
-    to_date = payload.to_date or date.today()
+    total_debit = sum(t.amount for t in txns if t.transaction_type.value in ("bill", "sale"))
+    total_credit = sum(t.amount for t in txns if t.transaction_type.value not in ("bill", "sale"))
 
-    html = generate_html_statement(
+    from_date = from_date or (txns[0].transaction_date if txns else date.today())
+
+    pdf_bytes = generate_statement_pdf(
         party_name=party.name,
         party_gst=party.gst_number,
+        party_location=getattr(party, "location", None),
         business_name=owner.business_name if owner else "Business",
         transactions=txn_dicts,
         from_date=str(from_date),
         to_date=str(to_date),
-        opening_balance=0,
+        opening_balance=opening_balance,
+        total_debit=total_debit,
+        total_credit=total_credit,
         closing_balance=party_balance(db, party.id),
     )
-    return HTMLResponse(content=html)
-
+    return Response(content=pdf_bytes, media_type="application/pdf")
 
 @router.post("/upi-link", response_model=UPILinkResponse)
 def generate_upi_link(

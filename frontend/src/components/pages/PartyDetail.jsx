@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatINR, formatDate } from '../../lib/format'
+import { save } from '@tauri-apps/plugin-dialog'
+import { writeFile } from '@tauri-apps/plugin-fs'
+import { open } from '@tauri-apps/plugin-shell'
 
 const TYPE_META = {
   bill:        { label: 'Bill',        sign: '+', color: 'text-due'     },
@@ -97,25 +100,32 @@ function UPIModal({ party, balance, onClose }) {
 
 function StatementModal({ party, onClose }) {
   const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState(new Date().toISOString().slice(0, 10))
+  const [toDate, setToDate] = useState(() => {
+    const now = new Date()
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  })
   const [loading, setLoading] = useState(false)
 
-  async function handleView(viewMode) {
-    setLoading(true)
-    try {
-      const html = await api.getStatement({ party_id: party.id, from_date: fromDate || null, to_date: toDate || null })
-      const win = window.open('', '_blank')
-      if (viewMode === 'print') {
-        win.document.write(html)
-        win.document.close()
-        win.print()
-      } else {
-        win.document.write(html)
-        win.document.close()
-      }
-    } catch (err) { alert(err.message) }
-    finally { setLoading(false); onClose() }
+
+
+async function handleView() {
+  setLoading(true)
+  try {
+    const pdfBytes = await api.getStatement({ party_id: party.id, from_date: fromDate || null, to_date: toDate || null })
+    const safeName = party.name.replace(/[^a-z0-9]+/gi, '_')
+    const path = await save({
+      defaultPath: `${safeName}-statement.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (!path) { setLoading(false); return }
+    await writeFile(path, new Uint8Array(pdfBytes))
+    await open(path)
+  } catch (err) {
+    console.error('handleView error:', err)
+    alert(err?.message || String(err))
   }
+  finally { setLoading(false); onClose() }
+}
 
   return (
     <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-50 p-4">
