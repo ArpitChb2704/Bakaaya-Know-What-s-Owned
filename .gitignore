@@ -16,8 +16,8 @@ sdist/
 wheels/
 pip-wheel-metadata/
 .installed.cfg
-lib/
-lib64/
+backend/lib/
+backend/lib64/
 
 # Virtual environments
 .env
