@@ -9,4 +9,3 @@ email-validator
 python-multipart
 groq
 weasyprint
-EOF
