@@ -83,6 +83,7 @@ class Transaction(Base):
     approved = Column(Boolean, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     party = relationship("Party", back_populates="transactions")
+    items = relationship("TransactionItem", backref="transaction", cascade="all, delete-orphan")
 
 
 class ChatLog(Base):
