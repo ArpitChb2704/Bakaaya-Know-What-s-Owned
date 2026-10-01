@@ -118,3 +118,25 @@ class TeamInvite(Base):
     token = Column(String, unique=True, nullable=False)
     accepted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class SKU(Base):
+    __tablename__ = "skus"
+    id = Column(Integer, primary_key=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    unit = Column(String, nullable=True)  # "pcs", "kg", "box", etc.
+    cost_price = Column(Numeric(12, 2), nullable=False)
+    selling_price = Column(Numeric(12, 2), nullable=False)
+    is_archived = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class TransactionItem(Base):
+    __tablename__ = "transaction_items"
+    id = Column(Integer, primary_key=True)
+    transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=False, index=True)
+    sku_id = Column(Integer, ForeignKey("skus.id"), nullable=True)  # nullable: one-off items allowed
+    item_name = Column(String, nullable=False)   # snapshot, independent of SKU edits later
+    quantity = Column(Numeric(12, 2), nullable=False)
+    unit_price = Column(Numeric(12, 2), nullable=False)   # selling price at time of sale
+    unit_cost = Column(Numeric(12, 2), nullable=True)     # cost price at time of sale (for profit calc)
+    line_total = Column(Numeric(12, 2), nullable=False)
