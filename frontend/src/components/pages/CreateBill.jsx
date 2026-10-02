@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api'
-import { save } from '@tauri-apps/plugin-dialog'
-import { writeFile } from '@tauri-apps/plugin-fs'
-import { openPath } from '@tauri-apps/plugin-opener'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api } from '../../lib/api'
 
 export default function CreateBill() {
   const navigate = useNavigate()
@@ -67,29 +67,44 @@ export default function CreateBill() {
   }
 
   async function handleDownloadPdf() {
-    try {
-      const pdfBytes = await api.getInvoicePdf(created.id)
-      const path = await save({
-        defaultPath: `${created.invoice_number}.pdf`,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
-      })
-      if (!path) return
-      await writeFile(path, new Uint8Array(pdfBytes))
-    } catch (err) { alert(err.message) }
-  }
+  try {
+    const pdfBytes = await api.getInvoicePdf(created.id)
 
-  async function handleViewPrint() {
-    try {
-      const pdfBytes = await api.getInvoicePdf(created.id)
-      const path = await save({
-        defaultPath: `${created.invoice_number}.pdf`,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }],
-      })
-      if (!path) return
-      await writeFile(path, new Uint8Array(pdfBytes))
-      await openPath(path)
-    } catch (err) { alert(err.message) }
+    const blob = new Blob([pdfBytes], {
+      type: 'application/pdf',
+    })
+
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${created.invoice_number}.pdf`
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    alert(err.message)
   }
+}
+
+ async function handleViewPrint() {
+  try {
+    const pdfBytes = await api.getInvoicePdf(created.id)
+
+    const blob = new Blob([pdfBytes], {
+      type: 'application/pdf',
+    })
+
+    const url = URL.createObjectURL(blob)
+
+    window.open(url, '_blank')
+  } catch (err) {
+    alert(err.message)
+  }
+}
 
   if (created) {
     return (
@@ -97,9 +112,9 @@ export default function CreateBill() {
         <div className="text-2xl mb-2">✓ Bill Created Successfully</div>
         <div className="text-stone mb-6">{created.invoice_number}</div>
         <div className="flex flex-col gap-2">
-          <button onClick={handleViewPrint} className="border border-rule py-2 rounded-sm hover:bg-paperdim">View Invoice</button>
-          <button onClick={handleViewPrint} className="border border-rule py-2 rounded-sm hover:bg-paperdim">Print</button>
-          <button onClick={handleDownloadPdf} className="border border-rule py-2 rounded-sm hover:bg-paperdim">Download PDF</button>
+          <button onClick={handleViewPrint} className="border border-rule py-2 rounded-sm hover:bg-paperdim"> View Invoice </button>
+          <button onClick={handleViewPrint} className="border border-rule py-2 rounded-sm hover:bg-paperdim"> Print </button>
+          <button onClick={handleDownloadPdf} className="border border-rule py-2 rounded-sm hover:bg-paperdim"> Download PDF </button>
           <button onClick={() => navigate('/')} className="bg-ink text-paper py-2 rounded-sm">Done</button>
         </div>
       </div>
