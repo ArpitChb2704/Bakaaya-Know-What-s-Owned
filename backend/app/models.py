@@ -84,6 +84,7 @@ class Transaction(Base):
     approved = Column(Boolean, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     party = relationship("Party", back_populates="transactions")
+    invoice_number = Column(String, nullable=True, index=True)
 
 
 class ChatLog(Base):
