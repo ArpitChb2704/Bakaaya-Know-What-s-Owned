@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api'
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api } from '../../lib/api'
+
 
 export default function CreateBill() {
   const navigate = useNavigate()
