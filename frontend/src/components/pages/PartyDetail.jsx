@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import { formatINR, formatDate } from '../../lib/format'
 import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
-import { open } from '@tauri-apps/plugin-shell'
+import { openPath } from '@tauri-apps/plugin-opener'
 
 const TYPE_META = {
   bill:        { label: 'Bill',        sign: '+', color: 'text-due'     },
@@ -119,7 +119,7 @@ async function handleView() {
     })
     if (!path) { setLoading(false); return }
     await writeFile(path, new Uint8Array(pdfBytes))
-    await open(path)
+    await openPath(path)
   } catch (err) {
     console.error('handleView error:', err)
     alert(err?.message || String(err))

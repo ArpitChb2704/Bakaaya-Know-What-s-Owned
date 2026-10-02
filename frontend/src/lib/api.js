@@ -39,6 +39,22 @@ async function getStatementPdf(body) {
   return res.arrayBuffer()
 }
 
+async function getInvoicePdf(transactionId) {
+  const headers = {}
+  const t = getToken()
+  if (t) headers['Authorization'] = `Bearer ${t}`
+  const res = await fetch(`${API_URL}/api/transactions/${transactionId}/invoice`, {
+    method: 'GET',
+    headers,
+  })
+  if (!res.ok) {
+    let detail = 'Something went wrong.'
+    try { const err = await res.json(); detail = err.detail || detail } catch {}
+    throw new Error(detail)
+  }
+  return res.arrayBuffer()
+}
+
 export const api = {
   // auth
   signup: (d) => request('/api/auth/signup', { method: 'POST', body: d, auth: false }),
@@ -63,6 +79,19 @@ export const api = {
   updateTransaction: (id, d) => request(`/api/transactions/${id}`, { method: 'PATCH', body: d }),
   deleteTransaction: (id) => request(`/api/transactions/${id}`, { method: 'DELETE' }),
   approveTransaction: (id) => request(`/api/transactions/${id}/approve`, { method: 'POST' }),
+
+
+  // skus
+  listSkus: () => request('/api/skus'),
+  createSku: (d) => request('/api/skus', { method: 'POST', body: d }),
+  updateSku: (id, d) => request(`/api/skus/${id}`, { method: 'PATCH', body: d }),
+  archiveSku: (id) => request(`/api/skus/${id}`, { method: 'DELETE' }),
+
+  // invoice
+  getInvoicePdf: getInvoicePdf,
+
+  // Sales report
+  getSalesReport: (p = {}) => request(`/api/analytics/sales-report?${new URLSearchParams(p)}`),
 
   // dashboard
   getSummary: () => request('/api/dashboard/summary'),

@@ -8,6 +8,8 @@ const navItems = [
   { to: '/suppliers', label: 'Suppliers' },
   { to: '/customers', label: 'Customers' },
   { to: '/transactions', label: 'Transactions' },
+  { to: '/create-bill', label: 'Create Bill' },
+  { to: '/skus', label: 'Products' },
   { to: '/calendar', label: 'Calendar' },
   { to: '/bank-import', label: 'Import' },
   { to: '/analytics', label: 'Analytics' },

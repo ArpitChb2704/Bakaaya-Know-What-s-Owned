@@ -4,6 +4,8 @@ import { formatINR } from '../../lib/format'
 
 const GRADE_COLORS = { A: 'text-settled bg-settled/10', B: 'text-ink bg-paperdim', C: 'text-yellow-700 bg-yellow-50', D: 'text-due bg-due/10' }
 
+
+
 function CashflowChart({ weeks }) {
   if (!weeks.length) return null
   const maxVal = Math.max(...weeks.map(w => Math.max(w.expected_inflow, w.expected_outflow)))
@@ -35,6 +37,11 @@ export default function Analytics() {
   const [scores, setScores] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('cashflow')
+  const [report, setReport] = useState([])
+  const [reportPeriod, setReportPeriod] = useState('monthly')
+  const [reportPartyType, setReportPartyType] = useState('')
+  const [reportPartyId, setReportPartyId] = useState('')
+  const [parties, setParties] = useState([])
 
   useEffect(() => {
     Promise.all([api.getCashflow(), api.getSupplierScores()])
@@ -42,18 +49,29 @@ export default function Analytics() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    api.listParties().then(setParties).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const params = { period: reportPeriod }
+    if (reportPartyType) params.party_type = reportPartyType
+    if (reportPartyId) params.party_id = reportPartyId
+    api.getSalesReport(params).then(setReport).catch(() => {})
+  }, [reportPeriod, reportPartyType, reportPartyId])
+
   return (
     <div className="max-w-5xl mx-auto px-5 py-8">
       <div className="mb-8">
         <h1 className="font-display text-3xl font-medium">Analytics</h1>
-        <p className="text-stone text-sm mt-1">Cashflow forecast and supplier performance</p>
+        <p className="text-stone text-sm mt-1">Cashflow forecast, supplier performance, and sales reports</p>
       </div>
 
       <div className="flex border-b border-rule mb-8 gap-6">
-        {['cashflow', 'suppliers'].map(t => (
+        {['cashflow', 'suppliers', 'reports'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`pb-3 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${tab === t ? 'border-ink text-ink' : 'border-transparent text-stone hover:text-ink'}`}>
-            {t === 'cashflow' ? 'Cashflow Forecast' : 'Supplier Performance'}
+            {t === 'cashflow' ? 'Cashflow Forecast' : t === 'suppliers' ? 'Supplier Performance' : 'Sales & Profit'}
           </button>
         ))}
       </div>
@@ -105,7 +123,7 @@ export default function Analytics() {
             </div>
           )}
         </div>
-      ) : (
+      ) : tab === 'suppliers' ? (
         <div>
           {scores.length === 0 ? (
             <div className="border border-rule border-dashed rounded-sm p-12 text-center">
@@ -148,6 +166,58 @@ export default function Analytics() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <div className="flex flex-wrap gap-3 mb-6">
+            <select value={reportPeriod} onChange={e => setReportPeriod(e.target.value)}
+              className="border border-rule rounded-sm px-3 py-2 text-sm bg-transparent">
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annual</option>
+            </select>
+            <select value={reportPartyType} onChange={e => { setReportPartyType(e.target.value); setReportPartyId('') }}
+              className="border border-rule rounded-sm px-3 py-2 text-sm bg-transparent">
+              <option value="">All parties</option>
+              <option value="customer">Customers</option>
+              <option value="supplier">Suppliers</option>
+            </select>
+            <select value={reportPartyId} onChange={e => setReportPartyId(e.target.value)}
+              className="border border-rule rounded-sm px-3 py-2 text-sm bg-transparent">
+              <option value="">All</option>
+              {parties
+                .filter(p => !reportPartyType || p.party_type === reportPartyType)
+                .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+
+          {report.length === 0 ? (
+            <div className="border border-rule border-dashed rounded-sm p-12 text-center">
+              <p className="font-display text-xl text-stone mb-2">No sales data yet</p>
+              <p className="text-stone text-sm">Create bills to see sales and profit here.</p>
+            </div>
+          ) : (
+            <div className="border border-rule rounded-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-paperdim border-b border-rule">
+                    {['Period', 'Sales', 'Profit', 'Transactions'].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-xs uppercase tracking-widest text-stone font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.map((r, i) => (
+                    <tr key={r.period} className={`border-b border-rule last:border-0 ${i % 2 === 1 ? 'bg-paper/40' : ''}`}>
+                      <td className="px-5 py-3.5">{r.period}</td>
+                      <td className="px-5 py-3.5 font-medium num">{formatINR(r.sales)}</td>
+                      <td className="px-5 py-3.5 font-medium num text-settled">{formatINR(r.profit)}</td>
+                      <td className="px-5 py-3.5 text-stone">{r.transaction_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

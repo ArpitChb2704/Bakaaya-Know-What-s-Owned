@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from datetime import date
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 from app.services.statement_pdf import generate_statement_pdf
 from decimal import Decimal
 from fastapi import Response
+from sqlalchemy import func, extract
+from app.models import TransactionItem , TransactionType
 
 from app.auth import get_current_user, get_business_owner_id
 from app.database import get_db
@@ -146,3 +148,44 @@ def generate_upi_link(
         amount=balance,
         party_name=party.name,
     )
+
+@router.get("/sales-report")
+def get_sales_report(
+    period: str = "monthly",  # "monthly" or "annual"
+    party_id: Optional[int] = None,
+    party_type: Optional[str] = None,  # "customer" or "supplier"
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    owner_id = get_business_owner_id(current_user)
+
+    q = db.query(Transaction).join(Party, Transaction.party_id == Party.id).filter(
+        Transaction.owner_id == owner_id,
+        Transaction.transaction_type == TransactionType.sale,
+    )
+    if party_id:
+        q = q.filter(Transaction.party_id == party_id)
+    if party_type:
+        q = q.filter(Party.party_type == party_type)
+
+    txns = q.all()
+    txn_ids = [t.id for t in txns]
+
+    items = db.query(TransactionItem).filter(TransactionItem.transaction_id.in_(txn_ids)).all() if txn_ids else []
+    items_by_txn = {}
+    for item in items:
+        items_by_txn.setdefault(item.transaction_id, []).append(item)
+
+    buckets = {}
+    for t in txns:
+        key = t.transaction_date.strftime("%Y-%m") if period == "monthly" else t.transaction_date.strftime("%Y")
+        if key not in buckets:
+            buckets[key] = {"period": key, "sales": Decimal("0"), "profit": Decimal("0"), "transaction_count": 0}
+        buckets[key]["sales"] += t.amount
+        buckets[key]["transaction_count"] += 1
+        for item in items_by_txn.get(t.id, []):
+            if item.unit_cost is not None:
+                buckets[key]["profit"] += (item.unit_price - item.unit_cost) * item.quantity
+
+    result = sorted(buckets.values(), key=lambda b: b["period"])
+    return result

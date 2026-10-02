@@ -10,3 +10,4 @@ python-multipart
 groq
 weasyprint
 bcrypt==4.0.1
+qrcode==8.2

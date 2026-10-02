@@ -11,6 +11,8 @@ import AskPage from './components/pages/AskPage'
 import BankImport from './components/pages/BankImport'
 import Analytics from './components/pages/Analytics'
 import Team from './components/pages/Team'
+import CreateBill from './components/pages/CreateBill'
+import Skus from './components/pages/Skus'
 
 function AppShell() {
   const { isAuthed } = useAuth()
@@ -25,6 +27,8 @@ function AppShell() {
           <Route path="/customers" element={<PartyList partyType="customer" />} />
           <Route path="/party/:id" element={<PartyDetail />} />
           <Route path="/transactions" element={<Transactions />} />
+          <Route path="/create-bill" element={<CreateBill />} />
+          <Route path="/skus" element={<Skus />} />
           <Route path="/calendar" element={<CalendarView />} />
           <Route path="/ask" element={<AskPage />} />
           <Route path="/bank-import" element={<BankImport />} />

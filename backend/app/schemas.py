@@ -75,6 +75,13 @@ class PartyOut(BaseModel):
 
 
 # ---------- Transaction ----------
+
+class TransactionItemIn(BaseModel):
+    sku_id: Optional[int] = None
+    item_name: str
+    quantity: Decimal
+    unit_price: Decimal
+
 class TransactionCreate(BaseModel):
     party_id: int
     transaction_type: TransactionType
@@ -82,6 +89,7 @@ class TransactionCreate(BaseModel):
     transaction_date: date = date.today()
     due_date: Optional[date] = None
     notes: Optional[str] = None
+    items: Optional[List[TransactionItemIn]] = None
 
 class TransactionUpdate(BaseModel):
     amount: Optional[Decimal] = None
