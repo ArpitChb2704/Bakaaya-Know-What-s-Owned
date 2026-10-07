@@ -163,9 +163,12 @@ def _is_ledger_question(question: str) -> bool:
             {"role": "user", "content": question},
         ],
         temperature=0,
-        max_tokens=5,
+        max_tokens=50,
+        reasoning_effort="low",
+
     )
-    return resp.choices[0].message.content.strip().upper().startswith("Y")
+    content = resp.choices[0].message.content or ""
+    return content.strip().upper().startswith("Y")
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +267,8 @@ def _generate_sql(question: str, context: dict, previous_error: str = None) -> s
         model=settings.groq_model,
         messages=messages,
         temperature=0,
-        max_tokens=600,
+        max_tokens=800,
+        reasoning_effort="medium"
     )
     sql = resp.choices[0].message.content.strip()
     sql = re.sub(r"^```[\w]*\n?|```$", "", sql, flags=re.MULTILINE).strip()

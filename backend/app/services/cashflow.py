@@ -39,8 +39,8 @@ def forecast(db: Session, owner_id: int) -> dict:
         }
 
     weeks_with_data = len(set(list(weekly_in.keys()) + list(weekly_out.keys()))) or 1
-    avg_in = sum(weekly_in.values()) / weeks_with_data
-    avg_out = sum(weekly_out.values()) / weeks_with_data
+    avg_in = sum(weekly_in.values(), Decimal("0")) / weeks_with_data
+    avg_out = sum(weekly_out.values(), Decimal("0")) / weeks_with_data
 
     # Build 4-week forecast
     forecast_weeks = []

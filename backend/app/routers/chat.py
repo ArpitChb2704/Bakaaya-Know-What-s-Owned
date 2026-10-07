@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user, require_active_plan
 from app.database import get_db
 from app.models import User, ChatLog
 from app.schemas import ChatRequest, ChatResponse
 from app.services.ai_chat import answer_question, NotLedgerQuestion
+from app.auth import get_current_user, require_active_plan, get_business_owner_id
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -16,8 +16,9 @@ def ask(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_active_plan),
 ):
+    owner_id = get_business_owner_id(current_user)
     try:
-        result = answer_question(db, current_user.id, payload.question)
+        result = answer_question(db, owner_id, payload.question)
 
     except NotLedgerQuestion as e:
         # Polite refusal — not an error, just out of scope
@@ -38,7 +39,7 @@ def ask(
     # Log successful questions for debugging
     try:
         log = ChatLog(
-            owner_id=current_user.id,
+            owner_id=owner_id,
             question=payload.question,
             generated_sql=result.get("generated_sql"),
             answer=result.get("answer"),
