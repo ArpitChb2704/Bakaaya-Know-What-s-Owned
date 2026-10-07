@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_active_plan
 from app.database import get_db
 from app.models import User, ChatLog
 from app.schemas import ChatRequest, ChatResponse
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 def ask(
     payload: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     try:
         result = answer_question(db, current_user.id, payload.question)

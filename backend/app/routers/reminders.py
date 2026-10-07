@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_active_plan
 from app.database import get_db
 from app.models import User, Reminder, Party
 from app.schemas import ReminderCreate, ReminderUpdate, ReminderOut
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/reminders", tags=["reminders"])
 def list_reminders(
     party_id: int = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     q = db.query(Reminder).filter(Reminder.owner_id == current_user.id)
     if party_id:
@@ -27,7 +27,7 @@ def list_reminders(
 def create_reminder(
     payload: ReminderCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     party = db.query(Party).filter(
         Party.id == payload.party_id, Party.owner_id == current_user.id
@@ -47,7 +47,7 @@ def update_reminder(
     reminder_id: int,
     payload: ReminderUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     r = db.query(Reminder).filter(
         Reminder.id == reminder_id, Reminder.owner_id == current_user.id
@@ -66,7 +66,7 @@ def update_reminder(
 def delete_reminder(
     reminder_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     r = db.query(Reminder).filter(
         Reminder.id == reminder_id, Reminder.owner_id == current_user.id

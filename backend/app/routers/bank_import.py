@@ -5,7 +5,7 @@ from typing import List
 from datetime import date
 from decimal import Decimal
 
-from app.auth import get_current_user, get_business_owner_id
+from app.auth import get_current_user, get_business_owner_id, require_active_plan
 from app.database import get_db
 from app.models import User, Party, Transaction, PartyType
 from app.services.bank_import import parse_csv, match_with_ai
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/bank-import", tags=["bank-import"])
 async def upload_statement(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported.")
@@ -47,7 +47,7 @@ async def upload_statement(
 def confirm_import(
     payload: BankImportConfirm,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     owner_id = get_business_owner_id(current_user)
     saved = []

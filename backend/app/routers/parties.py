@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import json
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_active_plan
 from app.database import get_db
 from app.models import Party, User, PartyType, Transaction, TransactionType
 from app.schemas import PartyCreate, PartyUpdate, PartyOut, RiskOut
@@ -41,7 +41,7 @@ def list_parties(
     party_type: Optional[PartyType] = None,
     include_archived: bool = False,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     q = db.query(Party).filter(Party.owner_id == current_user.id)
     if party_type:
@@ -56,7 +56,7 @@ def list_parties(
 def create_party(
     payload: PartyCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     party = Party(owner_id=current_user.id, **payload.model_dump())
     db.add(party)
@@ -69,7 +69,7 @@ def create_party(
 def get_party(
     party_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     party = db.query(Party).filter(
         Party.id == party_id, Party.owner_id == current_user.id
@@ -84,7 +84,7 @@ def update_party(
     party_id: int,
     payload: PartyUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     party = db.query(Party).filter(
         Party.id == party_id, Party.owner_id == current_user.id
@@ -102,7 +102,7 @@ def update_party(
 def delete_party(
     party_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     party = db.query(Party).filter(
         Party.id == party_id, Party.owner_id == current_user.id
@@ -118,7 +118,7 @@ def delete_party(
 def refresh_risk(
     party_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     party = db.query(Party).filter(
         Party.id == party_id, Party.owner_id == current_user.id

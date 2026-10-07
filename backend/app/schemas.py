@@ -264,3 +264,12 @@ class SupplierScore(BaseModel):
     score: float        # 0-100, higher = better supplier relationship
     grade: str          # A / B / C / D
     insight: str
+
+class DashboardSummary(BaseModel):
+    total_receivable: Decimal
+    total_payable: Decimal
+    overdue_count: int
+    overdue_amount: Decimal
+    high_risk_count: int
+    upcoming_week_amount: Decimal
+    days_until_expiry: Optional[int] = None

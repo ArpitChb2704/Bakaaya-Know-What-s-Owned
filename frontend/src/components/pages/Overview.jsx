@@ -51,6 +51,17 @@ export default function Overview() {
         <h1 className="font-display text-3xl font-medium">{businessName}</h1>
       </div>
 
+      {/* Plan expiry warning */}
+      {summary?.days_until_expiry != null && summary.days_until_expiry <= 10 && summary.days_until_expiry >= 0 && (
+        <div className="bg-due/10 border border-due/30 rounded-sm p-4 mb-8 flex gap-3">
+          <span className="text-due text-lg">⚠</span>
+          <p className="text-sm text-due">
+            Your plan expires in {summary.days_until_expiry} day{summary.days_until_expiry === 1 ? '' : 's'} — recharge for Bakaaya Plan.
+          </p>
+        </div>
+      )}
+
+
       {/* Smart Entry — top of dashboard */}
       <div className="mb-8">
         <p className="text-xs uppercase tracking-widest text-stone mb-2">Quick add transaction</p>

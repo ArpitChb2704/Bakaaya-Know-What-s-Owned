@@ -11,7 +11,7 @@ from fastapi import Response
 from sqlalchemy import func, extract
 from app.models import TransactionItem , TransactionType
 
-from app.auth import get_current_user, get_business_owner_id
+from app.auth import get_current_user, get_business_owner_id, require_active_plan
 from app.database import get_db
 from app.models import User, Party, Transaction, PartyType
 from app.schemas import CashflowForecast, SupplierScore, StatementRequest, UPILinkRequest, UPILinkResponse
@@ -23,14 +23,14 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 
 @router.get("/cashflow", response_model=CashflowForecast)
-def get_cashflow(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_cashflow(db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     result = forecast(db, owner_id)
     return result
 
 
 @router.get("/supplier-scores", response_model=List[SupplierScore])
-def get_supplier_scores(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_supplier_scores(db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     suppliers = db.query(Party).filter(
         Party.owner_id == owner_id,
@@ -50,7 +50,7 @@ def get_supplier_scores(db: Session = Depends(get_db), current_user: User = Depe
 def get_statement(
     payload: StatementRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     owner_id = get_business_owner_id(current_user)
     party = db.query(Party).filter(Party.id == payload.party_id, Party.owner_id == owner_id).first()
@@ -110,7 +110,7 @@ def get_statement(
 def generate_upi_link(
     payload: UPILinkRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     owner_id = get_business_owner_id(current_user)
     party = db.query(Party).filter(Party.id == payload.party_id, Party.owner_id == owner_id).first()
@@ -155,7 +155,7 @@ def get_sales_report(
     party_id: Optional[int] = None,
     party_type: Optional[str] = None,  # "customer" or "supplier"
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     owner_id = get_business_owner_id(current_user)
 

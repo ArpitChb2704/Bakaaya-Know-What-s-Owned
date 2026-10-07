@@ -4,7 +4,7 @@ from typing import List, Optional
 from decimal import Decimal
 from pydantic import BaseModel
 
-from app.auth import get_current_user, get_business_owner_id
+from app.auth import get_current_user, get_business_owner_id, require_active_plan
 from app.database import get_db
 from app.models import User, SKU
 
@@ -38,13 +38,13 @@ class SKUOut(BaseModel):
 
 
 @router.get("", response_model=List[SKUOut])
-def list_skus(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_skus(db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     return db.query(SKU).filter(SKU.owner_id == owner_id, SKU.is_archived == False).order_by(SKU.name).all()
 
 
 @router.post("", response_model=SKUOut)
-def create_sku(payload: SKUCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_sku(payload: SKUCreate, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     sku = SKU(owner_id=owner_id, **payload.model_dump())
     db.add(sku)
@@ -54,7 +54,7 @@ def create_sku(payload: SKUCreate, db: Session = Depends(get_db), current_user: 
 
 
 @router.patch("/{sku_id}", response_model=SKUOut)
-def update_sku(sku_id: int, payload: SKUUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_sku(sku_id: int, payload: SKUUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     sku = db.query(SKU).filter(SKU.id == sku_id, SKU.owner_id == owner_id).first()
     if not sku:
@@ -67,7 +67,7 @@ def update_sku(sku_id: int, payload: SKUUpdate, db: Session = Depends(get_db), c
 
 
 @router.delete("/{sku_id}")
-def archive_sku(sku_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def archive_sku(sku_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     sku = db.query(SKU).filter(SKU.id == sku_id, SKU.owner_id == owner_id).first()
     if not sku:

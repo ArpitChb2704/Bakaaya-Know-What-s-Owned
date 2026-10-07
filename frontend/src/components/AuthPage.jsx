@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import Wordmark from './Wordmark'
+import { Link } from 'react-router-dom'
 
 export default function AuthPage() {
   const { login, signup, acceptInvite } = useAuth()
@@ -96,7 +97,9 @@ export default function AuthPage() {
             )}
             {mode !== 'invite' && (
               <p>Got an invite? <button onClick={() => { setMode('invite'); setError('') }} className="text-ink underline underline-offset-2">Join team</button></p>
-            )}
+            )}<Link to="/admin/login" className="block text-xs text-stone/60 hover:text-stone mt-4">
+              Admin
+            </Link>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -31,6 +31,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     exc = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") == "admin":
+            raise exc
         user_id = payload.get("sub")
         if user_id is None: raise exc
     except JWTError:
@@ -48,7 +50,20 @@ def get_business_owner_id(user: User) -> int:
     return user.business_id or user.id
 
 
-def require_owner(user: User = Depends(get_current_user)) -> User:
+def require_active_plan(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+    owner_id = get_business_owner_id(user)
+    owner = user if user.id == owner_id else db.query(User).filter(User.id == owner_id).first()
+
+    if owner and owner.plan_status == "suspended":
+        raise HTTPException(status_code=403, detail="Your Bakaaya plan has expired. Please renew to continue.")
+
+    if owner and owner.plan_valid_until and owner.plan_valid_until < date.today():
+        raise HTTPException(status_code=403, detail="Your Bakaaya plan has expired. Please renew to continue.")
+
+    return user
+
+
+def require_owner(user: User = Depends(require_active_plan)) -> User:
     if user.role != UserRole.owner:
         raise HTTPException(status_code=403, detail="Only the business owner can perform this action.")
     return user

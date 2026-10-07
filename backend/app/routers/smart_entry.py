@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_active_plan
 from app.database import get_db
 from app.models import User, Party, Transaction, PartyType, TransactionType
 from app.schemas import SmartEntryRequest, SmartEntryResponse, SmartEntryParsed, TransactionOut
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/smart-entry", tags=["smart-entry"])
 def parse(
     payload: SmartEntryRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     try:
         parsed = parse_entry(payload.text)
@@ -38,7 +38,7 @@ def parse(
 def confirm(
     payload: SmartEntryParsed,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     # Find or create party
     party = (

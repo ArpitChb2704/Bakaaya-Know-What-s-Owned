@@ -6,7 +6,7 @@ from sqlalchemy import text
 from app.database import get_db
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from app.routers import auth, parties, transactions, dashboard, chat, reminders, smart_entry, bank_import, analytics, skus
+from app.routers import auth, parties, transactions, dashboard, chat, reminders, smart_entry, bank_import, analytics, skus, admin
 
 Base.metadata.create_all(bind=engine)
 
@@ -30,6 +30,7 @@ app.include_router(smart_entry.router)
 app.include_router(bank_import.router)
 app.include_router(analytics.router)
 app.include_router(skus.router)
+app.include_router(admin.router)
 
 @app.get("/")
 def root():

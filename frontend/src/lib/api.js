@@ -13,9 +13,12 @@ async function request(path, { method = 'GET', body, auth = true, isForm = false
     body: isForm ? body : (body ? JSON.stringify(body) : undefined),
   })
   if (!res.ok) {
-    let detail = 'Something went wrong.'
-    try { const err = await res.json(); detail = err.detail || detail } catch {}
-    throw new Error(detail)
+  let detail = 'Something went wrong.'
+  try { const err = await res.json(); detail = err.detail || detail } catch {}
+  if (res.status === 403 && detail.includes('plan has expired')) {
+    window.dispatchEvent(new CustomEvent('plan-expired', { detail }))
+  }
+  throw new Error(detail)
   }
   if (res.status === 204) return null
   const ct = res.headers.get('content-type') || ''

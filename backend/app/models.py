@@ -43,10 +43,12 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(Enum(UserRole), default=UserRole.owner)
     business_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # owner's user.id for team members
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_active = Column(Boolean, default=True)
     parties = relationship("Party", back_populates="owner", foreign_keys="Party.owner_id", cascade="all, delete-orphan")
     upi_id = Column(String, nullable=True)
+    plan_valid_until = Column(Date, nullable=True)
+    plan_status = Column(String, default="active")
 
 
 class Party(Base):
@@ -59,7 +61,7 @@ class Party(Base):
     gst_number = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
     credit_period_days = Column(Integer, default=7)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_archived = Column(Boolean, default=False)
     risk_score = Column(Float, nullable=True)
     risk_label = Column(String, nullable=True)
@@ -82,7 +84,7 @@ class Transaction(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # who logged it
     requires_approval = Column(Boolean, default=False)  # flagged for owner approval
     approved = Column(Boolean, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     party = relationship("Party", back_populates="transactions")
     invoice_number = Column(String, nullable=True, index=True)
 
@@ -94,7 +96,7 @@ class ChatLog(Base):
     question = Column(Text, nullable=False)
     generated_sql = Column(Text, nullable=True)
     answer = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class Reminder(Base):
@@ -106,8 +108,8 @@ class Reminder(Base):
     notes = Column(Text, nullable=True)
     follow_up_date = Column(Date, nullable=True)
     amount_at_time = Column(Numeric(12, 2), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     party = relationship("Party", back_populates="reminders")
 
 
@@ -119,7 +121,7 @@ class TeamInvite(Base):
     role = Column(Enum(UserRole), default=UserRole.accountant)
     token = Column(String, unique=True, nullable=False)
     accepted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class SKU(Base):
     __tablename__ = "skus"
@@ -130,7 +132,7 @@ class SKU(Base):
     cost_price = Column(Numeric(12, 2), nullable=False)
     selling_price = Column(Numeric(12, 2), nullable=False)
     is_archived = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class TransactionItem(Base):
     __tablename__ = "transaction_items"
@@ -142,4 +144,21 @@ class TransactionItem(Base):
     unit_price = Column(Numeric(12, 2), nullable=False)   # selling price at time of sale
     unit_cost = Column(Numeric(12, 2), nullable=True)     # cost price at time of sale (for profit calc)
     line_total = Column(Numeric(12, 2), nullable=False)
+
+class Admin(Base):
+    __tablename__ = "admins"
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+class Payment(Base):
+    __tablename__ = "payments"
+    id = Column(Integer, primary_key=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    amount = Column(Numeric(12, 2), nullable=False)
+    payment_date = Column(Date, nullable=False)
+    plan_type = Column(String, nullable=False)  # "monthly" or "annual"
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

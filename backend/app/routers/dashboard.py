@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_active_plan
 from app.database import get_db
 from app.models import Party, User, PartyType, Transaction, TransactionType
 from app.schemas import DashboardSummary, CalendarEvent
 from app.services.ledger import party_balance, is_overdue
+from app.auth import get_current_user, require_active_plan, get_business_owner_id
+
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 @router.get("/summary", response_model=DashboardSummary)
 def get_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     parties = db.query(Party).filter(
         Party.owner_id == current_user.id, Party.is_archived == False
@@ -51,6 +53,9 @@ def get_summary(
         Transaction.due_date >= date.today(),
     ).all()
     upcoming_week_amount = sum(Decimal(str(t.amount)) for t in upcoming)
+    owner_id = get_business_owner_id(current_user)
+    owner = current_user if current_user.id == owner_id else db.query(User).filter(User.id == owner_id).first()
+    days_until_expiry = (owner.plan_valid_until - date.today()).days if owner and owner.plan_valid_until else None
 
     return DashboardSummary(
         total_receivable=total_receivable,
@@ -59,13 +64,14 @@ def get_summary(
         overdue_amount=overdue_amount,
         high_risk_count=high_risk_count,
         upcoming_week_amount=upcoming_week_amount,
+        days_until_expiry=days_until_expiry,
     )
 
 
 @router.get("/calendar", response_model=List[CalendarEvent])
 def get_calendar(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_active_plan),
 ):
     parties = db.query(Party).filter(
         Party.owner_id == current_user.id, Party.is_archived == False

@@ -13,9 +13,21 @@ import Analytics from './components/pages/Analytics'
 import Team from './components/pages/Team'
 import CreateBill from './components/pages/CreateBill'
 import Skus from './components/pages/Skus'
+import { useState, useEffect } from 'react'
+import PlanExpiredScreen from './components/pages/PlanExpiredScreen'
+import AdminLogin from './components/pages/AdminLogin'
+import AdminDashboard from './components/pages/AdminDashboard'
 
 function AppShell() {
   const { isAuthed } = useAuth()
+  const [planExpired, setPlanExpired] = useState(false)
+  useEffect(() => {
+    const handler = () => setPlanExpired(true)
+    window.addEventListener('plan-expired', handler)
+    return () => window.removeEventListener('plan-expired', handler)
+  }, [])
+
+  if (planExpired) return <PlanExpiredScreen />
   if (!isAuthed) return <AuthPage />
   return (
     <div className="min-h-screen bg-paper">
@@ -44,9 +56,15 @@ function AppShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
+      <Routes>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/*" element={
+          <AuthProvider>
+            <AppShell />
+          </AuthProvider>
+        } />
+      </Routes>
     </BrowserRouter>
   )
 }

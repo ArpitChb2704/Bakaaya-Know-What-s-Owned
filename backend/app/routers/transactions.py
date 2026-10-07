@@ -5,7 +5,7 @@ from sqlalchemy import and_
 from app.models import SKU, TransactionItem
 from datetime import datetime
 
-from app.auth import get_current_user, get_business_owner_id, can_approve_transaction
+from app.auth import get_current_user, get_business_owner_id, can_approve_transaction, require_active_plan
 from app.database import get_db
 from app.models import Transaction, Party, User, TransactionType
 from app.schemas import TransactionCreate, TransactionUpdate, TransactionOut, DuplicateCheck
@@ -44,7 +44,7 @@ def _check_duplicate(db, owner_id, party_id, amount, txn_type, txn_date) -> dict
 
 @router.get("", response_model=List[TransactionOut])
 def list_transactions(party_id: Optional[int] = None, limit: int = 200,
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     q = db.query(Transaction).filter(Transaction.owner_id == owner_id)
     if party_id:
@@ -53,14 +53,14 @@ def list_transactions(party_id: Optional[int] = None, limit: int = 200,
 
 
 @router.post("/check-duplicate", response_model=DuplicateCheck)
-def check_duplicate(payload: TransactionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def check_duplicate(payload: TransactionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     result = _check_duplicate(db, owner_id, payload.party_id, payload.amount, payload.transaction_type, payload.transaction_date)
     return DuplicateCheck(**result)
 
 
 @router.post("", response_model=TransactionOut)
-def create_transaction(payload: TransactionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_transaction(payload: TransactionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     party = db.query(Party).filter(Party.id == payload.party_id, Party.owner_id == owner_id).first()
     if not party:
@@ -109,7 +109,7 @@ def create_transaction(payload: TransactionCreate, db: Session = Depends(get_db)
 
 @router.patch("/{transaction_id}", response_model=TransactionOut)
 def update_transaction(transaction_id: int, payload: TransactionUpdate,
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     txn = db.query(Transaction).filter(Transaction.id == transaction_id, Transaction.owner_id == owner_id).first()
     if not txn:
@@ -122,7 +122,7 @@ def update_transaction(transaction_id: int, payload: TransactionUpdate,
 
 
 @router.post("/{transaction_id}/approve", response_model=TransactionOut)
-def approve_transaction(transaction_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def approve_transaction(transaction_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     from app.models import UserRole
     if current_user.role != UserRole.owner:
         raise HTTPException(status_code=403, detail="Only the owner can approve transactions")
@@ -138,7 +138,7 @@ def approve_transaction(transaction_id: int, db: Session = Depends(get_db), curr
 
 
 @router.delete("/{transaction_id}")
-def delete_transaction(transaction_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_transaction(transaction_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     txn = db.query(Transaction).filter(Transaction.id == transaction_id, Transaction.owner_id == owner_id).first()
     if not txn:
@@ -149,7 +149,7 @@ def delete_transaction(transaction_id: int, db: Session = Depends(get_db), curre
 
 
 @router.get("/{transaction_id}/invoice")
-def get_invoice_pdf(transaction_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_invoice_pdf(transaction_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
     owner_id = get_business_owner_id(current_user)
     txn = db.query(Transaction).filter(Transaction.id == transaction_id, Transaction.owner_id == owner_id).first()
     if not txn or not txn.invoice_number:
