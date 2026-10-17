@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List, Any
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+
 from app.models import PartyType, TransactionType, ReminderStatus, UserRole
 
 
@@ -86,7 +87,7 @@ class TransactionCreate(BaseModel):
     party_id: int
     transaction_type: TransactionType
     amount: Decimal
-    transaction_date: date = date.today()
+    transaction_date: date = Field(default_factory=date.today)
     due_date: Optional[date] = None
     notes: Optional[str] = None
     items: Optional[List[TransactionItemIn]] = None

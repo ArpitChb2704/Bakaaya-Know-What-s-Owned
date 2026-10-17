@@ -11,6 +11,9 @@ from app.models import Transaction, Party, User, TransactionType
 from app.schemas import TransactionCreate, TransactionUpdate, TransactionOut, DuplicateCheck
 from fastapi import Response
 from app.services.invoice_pdf import generate_invoice_pdf, generate_qr_data_uri
+from pydantic import BaseModel
+from decimal import Decimal
+from datetime import date
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
@@ -177,3 +180,29 @@ def get_invoice_pdf(transaction_id: int, db: Session = Depends(get_db), current_
         upi_qr_data_uri=qr_data_uri,
     )
     return Response(content=pdf_bytes, media_type="application/pdf")
+
+
+class InvoiceListItem(BaseModel):
+    id: int
+    invoice_number: str
+    party_name: str
+    amount: Decimal
+    transaction_date: date
+
+
+@router.get("/invoices", response_model=List[InvoiceListItem])
+def list_invoices(limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(require_active_plan)):
+    owner_id = get_business_owner_id(current_user)
+    rows = (
+        db.query(Transaction, Party)
+        .join(Party, Transaction.party_id == Party.id)
+        .filter(Transaction.owner_id == owner_id, Transaction.invoice_number.isnot(None))
+        .order_by(Transaction.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        InvoiceListItem(id=t.id, invoice_number=t.invoice_number, party_name=p.name,
+                        amount=t.amount, transaction_date=t.transaction_date)
+        for t, p in rows
+    ]

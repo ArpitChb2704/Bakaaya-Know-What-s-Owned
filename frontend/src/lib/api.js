@@ -92,6 +92,7 @@ export const api = {
 
   // invoice
   getInvoicePdf: getInvoicePdf,
+  listInvoices: () => request('/api/transactions/invoices'),
 
   // Sales report
   getSalesReport: (p = {}) => request(`/api/analytics/sales-report?${new URLSearchParams(p)}`),
