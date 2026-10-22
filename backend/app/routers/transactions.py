@@ -178,6 +178,8 @@ def get_invoice_pdf(transaction_id: int, db: Session = Depends(get_db), current_
         total=txn.amount,
         notes=txn.notes,
         upi_qr_data_uri=qr_data_uri,
+        invoice_date=txn.transaction_date,
+        credit_period_days=party.credit_period_days or 2,
     )
     return Response(content=pdf_bytes, media_type="application/pdf")
 
