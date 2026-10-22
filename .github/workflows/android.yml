@@ -1,0 +1,74 @@
+name: Build Bakaaya Android APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Capacitor for Android
+        working-directory: frontend
+        run: |
+          npm install @capacitor/core@^7 @capacitor/cli@^7 @capacitor/android@^7
+
+      - name: Create Capacitor configuration
+        working-directory: frontend
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.bakaaya.app",
+            "appName": "Bakaaya",
+            "webDir": "dist"
+          }
+          EOF
+
+      - name: Build React frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Generate Android project
+        working-directory: frontend
+        run: npx cap add android
+
+      - name: Sync Android project
+        working-directory: frontend
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bakaaya-Android-APK
+          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
