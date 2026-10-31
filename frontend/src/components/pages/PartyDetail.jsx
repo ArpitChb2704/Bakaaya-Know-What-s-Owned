@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatINR, formatDate } from '../../lib/format'
-import { save } from '@tauri-apps/plugin-dialog'
-import { writeFile } from '@tauri-apps/plugin-fs'
-import { openPath } from '@tauri-apps/plugin-opener'
+import { savePdfFile } from '../../lib/invoiceActions'
 
 const TYPE_META = {
   bill:        { label: 'Bill',        sign: '+', color: 'text-due'     },
@@ -109,23 +107,16 @@ function StatementModal({ party, onClose }) {
 
 
 async function handleView() {
-  setLoading(true)
-  try {
-    const pdfBytes = await api.getStatement({ party_id: party.id, from_date: fromDate || null, to_date: toDate || null })
-    const safeName = party.name.replace(/[^a-z0-9]+/gi, '_')
-    const path = await save({
-      defaultPath: `${safeName}-statement.pdf`,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    })
-    if (!path) { setLoading(false); return }
-    await writeFile(path, new Uint8Array(pdfBytes))
-    await openPath(path)
-  } catch (err) {
-    console.error('handleView error:', err)
-    alert(err?.message || String(err))
+    setLoading(true)
+    try {
+      const pdfBytes = await api.getStatement({ party_id: party.id, from_date: fromDate || null, to_date: toDate || null })
+      const safeName = party.name.replace(/[^a-z0-9]+/gi, '_')
+      await savePdfFile(pdfBytes, `${safeName}-statement.pdf`, true)
+    } catch (err) {
+      console.error('handleView error:', err)
+      alert(err?.message || String(err))
+    } finally { setLoading(false); onClose() }
   }
-  finally { setLoading(false); onClose() }
-}
 
   return (
     <div className="fixed inset-0 bg-ink/40 flex items-center justify-center z-50 p-4">
