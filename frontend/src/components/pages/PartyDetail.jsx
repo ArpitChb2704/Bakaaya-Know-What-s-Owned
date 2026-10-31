@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatINR, formatDate } from '../../lib/format'
 import { savePdfFile } from '../../lib/invoiceActions'
+import { openWhatsApp } from '../../lib/whatsapp'
 
 const TYPE_META = {
   bill:        { label: 'Bill',        sign: '+', color: 'text-due'     },
@@ -87,6 +88,8 @@ function UPIModal({ party, balance, onClose }) {
                 <button onClick={() => navigator.clipboard.writeText(result.whatsapp_message)}
                   className="text-xs text-stone hover:text-ink underline mt-1">Copy message</button>
               </div>
+              <button onClick={() => openWhatsApp(party.phone, result.whatsapp_message).catch(e => alert(e?.message || String(e)))}
+                className="w-full bg-ink text-paper text-sm py-2 rounded-sm">Send on WhatsApp</button>
               <button onClick={onClose} className="w-full border border-rule text-sm py-2 rounded-sm hover:bg-paperdim">Close</button>
             </div>
           )}

@@ -188,6 +188,7 @@ class InvoiceListItem(BaseModel):
     id: int
     invoice_number: str
     party_name: str
+    party_phone: Optional[str] = None
     amount: Decimal
     transaction_date: date
 
@@ -204,7 +205,7 @@ def list_invoices(limit: int = 50, db: Session = Depends(get_db), current_user: 
         .all()
     )
     return [
-        InvoiceListItem(id=t.id, invoice_number=t.invoice_number, party_name=p.name,
+        InvoiceListItem(id=t.id, invoice_number=t.invoice_number, party_name=p.name, party_phone=p.phone,
                         amount=t.amount, transaction_date=t.transaction_date)
         for t, p in rows
     ]

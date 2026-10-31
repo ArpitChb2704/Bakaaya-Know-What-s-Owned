@@ -10,6 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@capacitor/app-launcher": "^7.0.4",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/share": "^8.0.3",
     "@tauri-apps/plugin-dialog": "^2.8.0",
