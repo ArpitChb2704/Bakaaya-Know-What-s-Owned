@@ -32,6 +32,11 @@ function CashflowChart({ weeks }) {
   )
 }
 
+function currentMonth() {
+  const now = new Date()
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 7)
+}
+
 export default function Analytics() {
   const [cashflow, setCashflow] = useState(null)
   const [scores, setScores] = useState([])
@@ -42,6 +47,9 @@ export default function Analytics() {
   const [reportPartyType, setReportPartyType] = useState('')
   const [reportPartyId, setReportPartyId] = useState('')
   const [parties, setParties] = useState([])
+  const [itemMonth, setItemMonth] = useState(currentMonth())
+  const [itemAll, setItemAll] = useState(false)
+  const [itemData, setItemData] = useState(null)
 
   useEffect(() => {
     Promise.all([api.getCashflow(), api.getSupplierScores()])
@@ -60,6 +68,11 @@ export default function Analytics() {
     api.getSalesReport(params).then(setReport).catch(() => {})
   }, [reportPeriod, reportPartyType, reportPartyId])
 
+  useEffect(() => {
+    const params = itemAll ? {} : { month: itemMonth }
+    api.getItemSales(params).then(setItemData).catch(() => {})
+  }, [itemMonth, itemAll])
+
   return (
     <div className="max-w-5xl mx-auto px-5 py-8">
       <div className="mb-8">
@@ -68,10 +81,10 @@ export default function Analytics() {
       </div>
 
       <div className="flex border-b border-rule mb-8 gap-6">
-        {['cashflow', 'suppliers', 'reports'].map(t => (
+        {['cashflow', 'suppliers', 'reports', 'items'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`pb-3 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${tab === t ? 'border-ink text-ink' : 'border-transparent text-stone hover:text-ink'}`}>
-            {t === 'cashflow' ? 'Cashflow Forecast' : t === 'suppliers' ? 'Supplier Performance' : 'Sales & Profit'}
+            {t === 'cashflow' ? 'Cashflow Forecast' : t === 'suppliers' ? 'Supplier Performance' : t === 'reports' ? 'Sales & Profit' : 'Items Sold'}
           </button>
         ))}
       </div>
@@ -169,7 +182,7 @@ export default function Analytics() {
             </div>
           )}
         </div>
-      ) : (
+      ) : tab === 'reports' ? (
         <div>
           <div className="flex flex-wrap gap-3 mb-6">
             <select value={reportPeriod} onChange={e => setReportPeriod(e.target.value)}
@@ -219,6 +232,61 @@ export default function Analytics() {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <div className="flex flex-wrap items-center gap-4 mb-6">
+            <input type="month" value={itemMonth} disabled={itemAll}
+              onChange={e => setItemMonth(e.target.value)}
+              className="border border-rule rounded-sm px-3 py-2 text-sm bg-transparent disabled:opacity-40" />
+            <label className="flex items-center gap-2 text-sm text-stone">
+              <input type="checkbox" checked={itemAll} onChange={e => setItemAll(e.target.checked)} />
+              All time
+            </label>
+          </div>
+
+          {!itemData || itemData.items.length === 0 ? (
+            <div className="border border-rule border-dashed rounded-sm p-12 text-center">
+              <p className="font-display text-xl text-stone mb-2">No item sales {itemAll ? 'yet' : 'in this month'}</p>
+              <p className="text-stone text-sm">Items appear here once you create bills with items.</p>
+            </div>
+          ) : (
+            <>
+              <div className="border border-rule rounded-sm overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-paperdim border-b border-rule">
+                      {['Item', 'Qty sold', 'Sales', 'Profit'].map(h => (
+                        <th key={h} className="px-5 py-3 text-left text-xs uppercase tracking-widest text-stone font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemData.items.map((r, i) => (
+                      <tr key={r.item_name} className={`border-b border-rule last:border-0 ${i % 2 === 1 ? 'bg-paper/40' : ''}`}>
+                        <td className="px-5 py-3.5">{r.item_name}</td>
+                        <td className="px-5 py-3.5 num">{Number(r.quantity).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-5 py-3.5 font-medium num">{formatINR(r.revenue)}</td>
+                        <td className="px-5 py-3.5 font-medium num text-settled">
+                          {r.profit == null ? '—' : formatINR(r.profit)}{r.profit != null && r.cost_missing ? '*' : ''}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {itemData.items.some(r => r.cost_missing) && (
+                <p className="text-xs text-stone mt-3">
+                  Profit needs a cost price. "—" means no cost price was known for that item; * means profit is only for the bills where it was known. Pick items from Products to include cost.
+                </p>
+              )}
+              {Number(itemData.unitemized_total) > 0 && (
+                <p className="text-xs text-stone mt-2">
+                  {formatINR(itemData.unitemized_total)} of sales {itemAll ? '' : 'in this month '}were logged without items, so they are not listed above.
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
