@@ -18,6 +18,8 @@ from app.schemas import CashflowForecast, SupplierScore, StatementRequest, UPILi
 from app.services.cashflow import forecast
 from app.services.supplier_score import score_supplier
 from app.services.ledger import party_balance
+from datetime import date, datetime, timedelta
+from sqlalchemy import func
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -189,3 +191,62 @@ def get_sales_report(
 
     result = sorted(buckets.values(), key=lambda b: b["period"])
     return result
+
+@router.get("/item-sales")
+def get_item_sales(
+    month: Optional[str] = None,   # "2026-10"; leave out for all time
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_active_plan),
+):
+    owner_id = get_business_owner_id(current_user)
+
+    start = end = None
+    if month:
+        try:
+            start = datetime.strptime(month, "%Y-%m").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="month must look like 2026-10")
+        end = (start + timedelta(days=32)).replace(day=1)
+
+    def in_range(q):
+        if start:
+            q = q.filter(Transaction.transaction_date >= start, Transaction.transaction_date < end)
+        return q
+
+    rows = in_range(
+        db.query(TransactionItem, Transaction)
+        .join(Transaction, TransactionItem.transaction_id == Transaction.id)
+        .filter(Transaction.owner_id == owner_id, Transaction.transaction_type == TransactionType.sale)
+    ).all()
+
+    buckets = {}
+    itemized_total = Decimal("0")
+    for item, txn in rows:
+        name = (item.item_name or "").strip() or "Unnamed item"
+        b = buckets.setdefault(name.lower(), {
+            "item_name": name, "quantity": Decimal("0"), "revenue": Decimal("0"),
+            "profit": Decimal("0"), "has_cost": False, "cost_missing": False,
+        })
+        b["quantity"] += item.quantity
+        b["revenue"] += item.line_total
+        itemized_total += item.line_total
+        if item.unit_cost is not None:
+            b["profit"] += (item.unit_price - item.unit_cost) * item.quantity
+            b["has_cost"] = True
+        else:
+            b["cost_missing"] = True
+
+    all_sales_total = in_range(
+        db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+            Transaction.owner_id == owner_id, Transaction.transaction_type == TransactionType.sale)
+    ).scalar() or Decimal("0")
+
+    items = sorted(buckets.values(), key=lambda b: b["revenue"], reverse=True)
+    return {
+        "items": [{
+            "item_name": b["item_name"], "quantity": b["quantity"], "revenue": b["revenue"],
+            "profit": b["profit"] if b["has_cost"] else None, "cost_missing": b["cost_missing"],
+        } for b in items],
+        "itemized_total": itemized_total,
+        "unitemized_total": max(Decimal(str(all_sales_total)) - itemized_total, Decimal("0")),
+    }

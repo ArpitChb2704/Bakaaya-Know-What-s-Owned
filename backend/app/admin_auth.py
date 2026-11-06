@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import Admin
+from app.models import Adminw
 from app.auth import create_access_token
 
 admin_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")

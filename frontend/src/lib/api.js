@@ -126,4 +126,11 @@ export const api = {
   getSupplierScores: () => request('/api/analytics/supplier-scores'),
   getStatement: getStatementPdf,
   generateUpiLink: (d) => request('/api/analytics/upi-link', { method: 'POST', body: d }),
+
+
+  // item sales
+  getItemSales: (p = {}) => request(`/api/analytics/item-sales?${new URLSearchParams(p)}`),
+
+
+
 }
